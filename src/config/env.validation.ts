@@ -12,4 +12,12 @@ export const envValidationSchema = Joi.object({
   JWT_EXPIRES_IN: Joi.string().default('7d'),
   FRONTEND_URL: Joi.string().required(),
   PORT: Joi.number().default(3000),
+  // Optional (not `required()` like the vars above): missing or empty should
+  // only disable the football-data sync cron, not crash the whole app at
+  // boot. `.allow('')` matters because docker-compose's `${VAR:-}` always
+  // sets the env var, to `""` when unset in `.env` — never truly absent.
+  FOOTBALL_DATA_API_KEY: Joi.string().allow('').optional(),
+  FOOTBALL_DATA_BASE_URL: Joi.string()
+    .uri()
+    .default('https://api.football-data.org/v4'),
 });

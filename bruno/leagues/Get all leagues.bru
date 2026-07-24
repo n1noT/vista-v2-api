@@ -1,0 +1,16 @@
+meta {
+  name: Get all leagues
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/leagues
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

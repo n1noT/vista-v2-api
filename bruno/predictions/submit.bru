@@ -1,0 +1,28 @@
+meta {
+  name: Submit
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/predictions/submit
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "leagueId": 1,
+    "seasonId": 1,
+    "predictions": [
+      { "teamId": 1, "position": 1 },
+      { "teamId": 2, "position": 2 },
+      { "teamId": 3, "position": 3 },
+      { "teamId": 4, "position": 4 }
+    ]
+  }
+}
+
+docs {
+  Requires the access_token cookie. Same validation as draft, plus the predictions array must cover exactly every team in the league/season (400 if incomplete). Sets status to SUBMITTED and locks the prediction — re-running this request afterwards returns 400 ("déjà été soumis").
+}

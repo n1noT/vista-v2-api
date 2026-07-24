@@ -1,0 +1,27 @@
+meta {
+  name: Save draft
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/predictions/draft
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "leagueId": 1,
+    "seasonId": 1,
+    "predictions": [
+      { "teamId": 1, "position": 1 },
+      { "teamId": 2, "position": 2 },
+      { "teamId": 4, "position": 4 }
+    ]
+  }
+}
+
+docs {
+  Requires the access_token cookie. leagueId/seasonId must reference a League+Season that already has TeamLeagueSeason rows seeded (400 "Championnat introuvable." otherwise), and positions must run 1..N without gaps for N = team count in that league/season — enforced even for a draft. Re-run to overwrite the existing draft for this user+league+season.
+}

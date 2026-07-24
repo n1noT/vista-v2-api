@@ -1,12 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// schema.prisma
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../generated/prisma"
-  moduleFormat = "cjs"
+  provider      = "prisma-client"
+  output        = "../generated/prisma"
+  moduleFormat  = "cjs"
 }
 
 datasource db {
@@ -18,14 +15,93 @@ enum Role {
   ADMIN
 }
 
+enum PredictionState {
+  DRAFT
+  SUBMITTED
+}
+
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  pseudo       String    @unique
+  id           String       @id @default(uuid())
+  email        String       @unique
+  pseudo       String       @unique
   passwordHash String
   avatarUrl    String?
-  role         Role      @default(PLAYER)
+  role         Role         @default(PLAYER)
   bannedAt     DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  predictions  Prediction[]
+}
+
+model Team {
+  id               Int                @id @default(autoincrement())
+  externalId       Int                @unique
+  name             String
+  logoUrl          String?
+
+  participations            TeamLeagueSeason[]
+  predictionItems  PredictionItem[]
+}
+
+model League {
+  id          Int                @id @default(autoincrement())
+  externalId  Int                @unique
+  name        String
+  logoUrl     String?
+
+  participations       TeamLeagueSeason[]
+  predictions Prediction[]
+}
+
+model Season {
+  id              Int                @id @default(autoincrement())
+  externalId      Int                @unique
+  startDate       DateTime
+  endDate         DateTime
+  currentMatchday Int
+  isCurrent       Boolean
+
+  participations           TeamLeagueSeason[]
+  predictions     Prediction[]
+}
+
+model TeamLeagueSeason {
+  id               Int    @id @default(autoincrement())
+  teamId           Int
+  leagueId         Int
+  seasonId         Int
+  position         Int
+  playedGames      Int
+
+  team   Team   @relation(fields: [teamId], references: [id])
+  league League @relation(fields: [leagueId], references: [id])
+  season Season @relation(fields: [seasonId], references: [id])
+
+  @@unique([teamId, leagueId, seasonId])
+}
+
+model Prediction {
+  id          Int               @id @default(autoincrement())
+  userId      String
+  leagueId    Int
+  seasonId    Int
+  status      PredictionState   @default(DRAFT)
+  submittedAt DateTime?
+
+  user        User              @relation(fields: [userId], references: [id])
+  league      League            @relation(fields: [leagueId], references: [id])
+  season      Season            @relation(fields: [seasonId], references: [id])
+  
+  items       PredictionItem[]
+}
+
+model PredictionItem {
+  id           Int        @id @default(autoincrement())
+  predictionId Int
+  teamId       Int
+  position     Int
+
+  prediction   Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  team         Team       @relation(fields: [teamId], references: [id])
 }
