@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "vista-v2-api",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

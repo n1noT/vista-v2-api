@@ -1,0 +1,15 @@
+meta {
+  name: Get me
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/users/me
+  body: none
+  auth: inherit
+}
+
+docs {
+  Requires the access_token cookie (run Auth/Login or Auth/Register first). 401 if not authenticated.
+}
