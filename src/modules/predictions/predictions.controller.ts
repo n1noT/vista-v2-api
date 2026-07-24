@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { PredictionState } from '../../../generated/prisma/client';
 import { CUPredictionsDto } from './dto/cu-prediction.dto';
 import { GetPredictionQueryDto } from './dto/get-prediction-query.dto';
@@ -9,6 +9,16 @@ import { PredictionsService } from './predictions.service';
 @Controller('predictions')
 export class PredictionsController {
   constructor(private readonly predictionsService: PredictionsService) {}
+
+  @Get('leagues')
+  getAvailableLeagues(@CurrentUser() user: AuthenticatedUser) {
+    return this.predictionsService.getAvailableLeagues(user.id);
+  }
+
+  @Get('leagues/:leagueId')
+  getLeagueDetail(@Param('leagueId', ParseIntPipe) leagueId: number) {
+    return this.predictionsService.getLeagueDetail(leagueId);
+  }
 
   @Get()
   findOwn(

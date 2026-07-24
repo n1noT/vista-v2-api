@@ -43,7 +43,7 @@ export class LeaguesService {
   }
 
   /**
-   * Backs `GET /leagues/:leagueId` — the full team list for a league's
+   * Backs `GET /predictions/leagues/:leagueId` — the full team list for a league's
    * current season, sorted by real current position, plus the `seasonId`
    * the front needs on every `/predictions/*` write. `Season` isn't shared
    * across leagues (each league's `TeamLeagueSeason` rows point at their own

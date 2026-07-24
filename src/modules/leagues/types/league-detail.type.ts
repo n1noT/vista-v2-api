@@ -1,5 +1,5 @@
 /**
- * Shape returned by `GET /leagues/:leagueId`: everything the front's
+ * Shape returned by `GET /predictions/leagues/:leagueId`: everything the front's
  * `/predictions/league/[id]` page needs in one round-trip — the
  * league's current-season `id` (`predictions.service.ts` requires both
  * `leagueId` and `seasonId` on save) plus the full team list to seed the

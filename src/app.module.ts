@@ -7,9 +7,12 @@
  *   rather than a confusing runtime error later).
  * - `PrismaModule` is `@Global()` so `PrismaService` is injectable anywhere
  *   without re-importing it in every feature module.
- * - `UsersModule`, `AuthModule`, `LeaguesModule`, `PredictionsModule`, and
+ * - `UsersModule`, `AuthModule`, `PredictionsModule`, and
  *   `FootballSyncModule` are the domain modules; `AuthModule` depends on
- *   `UsersModule`, never the other way round.
+ *   `UsersModule`, never the other way round. `LeaguesModule` isn't listed
+ *   here — it has no controller of its own anymore (its HTTP surface moved
+ *   to `PredictionsController`), so it's only imported where its service is
+ *   actually needed, inside `PredictionsModule`.
  * - `ScheduleModule.forRoot()` is registered here (global, once app-wide) so
  *   `FootballSyncModule`'s `@Cron()` job actually fires — it's a no-op
  *   without this.
@@ -28,7 +31,6 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { LeaguesModule } from './modules/leagues/leagues.module';
 import { PredictionsModule } from './modules/predictions/predictions.module';
 import { FootballSyncModule } from './modules/football-sync/football-sync.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -44,7 +46,6 @@ import { envValidationSchema } from './config/env.validation';
     PrismaModule,
     UsersModule,
     AuthModule,
-    LeaguesModule,
     PredictionsModule,
     FootballSyncModule,
   ],
