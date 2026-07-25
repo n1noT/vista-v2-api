@@ -89,7 +89,7 @@ model Prediction {
   status      PredictionState   @default(DRAFT)
   submittedAt DateTime?
 
-  user        User              @relation(fields: [userId], references: [id])
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   league      League            @relation(fields: [leagueId], references: [id])
   season      Season            @relation(fields: [seasonId], references: [id])
   

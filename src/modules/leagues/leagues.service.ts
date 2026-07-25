@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailableLeague } from './types/available-league.type';
 import { LeagueDetail } from './types/league-detail.type';
+import { ChampionshipStatus } from './types/championship-status.type';
 
 @Injectable()
 export class LeaguesService {
@@ -37,6 +38,52 @@ export class LeaguesService {
         seasonId: group.seasonId,
         leagueName: league?.name ?? '',
         leagueLogoUrl: league?.logoUrl ?? null,
+        teamCount: group._count._all,
+      };
+    });
+  }
+
+  /**
+   * Backs `GET /admin/dashboard`'s "statuts des championnats" section
+   * (`Arborescence_Pages.md`). Same current-season `TeamLeagueSeason`
+   * grouping as `getAvailableLeagues`, but also pulls each season's
+   * `currentMatchday`/`startDate`/`endDate` — status fields an admin
+   * overview needs that the player-facing list has no use for. Empty until
+   * `FootballSyncService` has run at least once.
+   */
+  async getChampionshipStatuses(): Promise<ChampionshipStatus[]> {
+    const groups = await this.prisma.teamLeagueSeason.groupBy({
+      by: ['leagueId', 'seasonId'],
+      where: { season: { isCurrent: true } },
+      _count: { _all: true },
+    });
+
+    if (groups.length === 0) {
+      return [];
+    }
+
+    const [leagues, seasons] = await Promise.all([
+      this.prisma.league.findMany({
+        where: { id: { in: groups.map((g) => g.leagueId) } },
+      }),
+      this.prisma.season.findMany({
+        where: { id: { in: groups.map((g) => g.seasonId) } },
+      }),
+    ]);
+    const leagueById = new Map(leagues.map((league) => [league.id, league]));
+    const seasonById = new Map(seasons.map((season) => [season.id, season]));
+
+    return groups.map((group) => {
+      const league = leagueById.get(group.leagueId);
+      const season = seasonById.get(group.seasonId);
+      return {
+        leagueId: group.leagueId,
+        leagueName: league?.name ?? '',
+        leagueLogoUrl: league?.logoUrl ?? null,
+        seasonId: group.seasonId,
+        currentMatchday: season?.currentMatchday ?? 0,
+        startDate: season?.startDate.toISOString() ?? '',
+        endDate: season?.endDate.toISOString() ?? '',
         teamCount: group._count._all,
       };
     });

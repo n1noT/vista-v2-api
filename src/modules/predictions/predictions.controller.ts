@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
 import { PredictionState } from '../../../generated/prisma/client';
 import { CUPredictionsDto } from './dto/cu-prediction.dto';
 import { GetPredictionQueryDto } from './dto/get-prediction-query.dto';
