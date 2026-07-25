@@ -1,9 +1,10 @@
 /**
  * Seeds/refreshes League, Season, Team, and TeamLeagueSeason rows from
  * football-data.org standings. Runs once a day via `@nestjs/schedule`
- * (`handleCron`) and is also exposed as a plain method (`syncAll`) so a
- * future admin "force sync" endpoint can trigger the same logic on demand
- * without duplicating it.
+ * (`handleCron`) and is also exposed as a plain method (`syncAll`) so the
+ * admin "force sync" endpoint (`AdminSyncController`, `POST /admin/sync`)
+ * can trigger the same logic on demand without duplicating it — `handleCron`
+ * just calls `syncAll()` and discards the result, same as before.
  *
  * One `getStandings` call per league returns competition + season + the
  * full table in a single response, so a full run is 5 HTTP calls total —
@@ -13,8 +14,8 @@
  * (see prisma/schema.prisma) rather than matching by name, so this can
  * re-run daily without creating duplicates or breaking on a renamed team.
  * One league fetch failing (network error, unknown code, etc.) is logged
- * and skipped rather than aborting the whole run — the other leagues should
- * still sync.
+ * *and* recorded in `syncAll`'s returned `SyncResult` rather than aborting
+ * the whole run — the other leagues should still sync.
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -22,6 +23,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { FootballDataClient } from './football-data.client';
 import { SYNCED_COMPETITION_CODES } from './constants';
 import { FootballDataStandingsResponse } from './types/football-data.types';
+import { SyncResult } from './types/sync-result.type';
 
 @Injectable()
 export class FootballSyncService {
@@ -37,25 +39,33 @@ export class FootballSyncService {
     await this.syncAll();
   }
 
-  async syncAll(): Promise<void> {
+  async syncAll(): Promise<SyncResult> {
     if (!this.client.isConfigured()) {
       this.logger.warn(
         'FOOTBALL_DATA_API_KEY is not set — skipping football-data sync.',
       );
-      return;
+      return { configured: false, synced: [], failed: [] };
     }
+
+    const result: SyncResult = { configured: true, synced: [], failed: [] };
 
     for (const code of SYNCED_COMPETITION_CODES) {
       try {
         const standings = await this.client.getStandings(code);
         await this.syncLeague(standings);
         this.logger.log(`Synced ${code} (${standings.competition.name}).`);
+        result.synced.push({
+          code,
+          competitionName: standings.competition.name,
+        });
       } catch (error) {
-        this.logger.error(
-          `Failed to sync competition ${code}: ${(error as Error).message}`,
-        );
+        const message = (error as Error).message;
+        this.logger.error(`Failed to sync competition ${code}: ${message}`);
+        result.failed.push({ code, error: message });
       }
     }
+
+    return result;
   }
 
   private async syncLeague(data: FootballDataStandingsResponse): Promise<void> {
@@ -78,6 +88,7 @@ export class FootballSyncService {
       const season = await tx.season.upsert({
         where: { externalId: data.season.id },
         update: {
+          leagueId: league.id,
           startDate: new Date(data.season.startDate),
           endDate: new Date(data.season.endDate),
           currentMatchday: data.season.currentMatchday,
@@ -85,6 +96,7 @@ export class FootballSyncService {
         },
         create: {
           externalId: data.season.id,
+          leagueId: league.id,
           startDate: new Date(data.season.startDate),
           endDate: new Date(data.season.endDate),
           currentMatchday: data.season.currentMatchday,
@@ -105,16 +117,14 @@ export class FootballSyncService {
 
         await tx.teamLeagueSeason.upsert({
           where: {
-            teamId_leagueId_seasonId: {
+            teamId_seasonId: {
               teamId: team.id,
-              leagueId: league.id,
               seasonId: season.id,
             },
           },
           update: { position: row.position, playedGames: row.playedGames },
           create: {
             teamId: team.id,
-            leagueId: league.id,
             seasonId: season.id,
             position: row.position,
             playedGames: row.playedGames,

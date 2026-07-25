@@ -8,7 +8,8 @@
  * duplicate a real season. Retargeting an *already-synced* season's
  * `externalId` away from its real value does detach it from future syncs
  * (the next sync run just re-creates a fresh row for the real season) — a
- * deliberate admin action, not a footgun the API needs to block.
+ * deliberate admin action, not a footgun the API needs to block. `leagueId`
+ * is also editable, same reasoning as `externalId`.
  */
 import {
   IsBoolean,
@@ -19,6 +20,11 @@ import {
 } from 'class-validator';
 
 export class UpdateSeasonDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  leagueId?: number;
+
   @IsOptional()
   @IsDateString()
   startDate?: string;

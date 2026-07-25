@@ -1,11 +1,12 @@
 /**
  * All Prisma access for admin season management (`Fonctionnalites_Admin.md`
  * "Saison": add/edit/delete a season, plus add/remove a team from a
- * league's season). A `Season` row isn't tied to one league in the schema —
- * the pairing only exists via `TeamLeagueSeason` rows (see the comment on
- * `LeaguesService.getLeagueDetail` for why: "each league's
- * `TeamLeagueSeason` rows point at their own `Season`") — so every
- * team-participation write here takes an explicit `leagueId`.
+ * season). Every `Season` row belongs to exactly one `League`
+ * (`Season.leagueId`, required at create) — matching how
+ * football-data.org's own season ids are already scoped to one competition
+ * (see `FootballSyncService.syncLeague`) — so a team-participation write
+ * only ever needs `teamId`; the league is implied by the season it's
+ * posted to, not a separate field an admin could mismatch.
  *
  * Same error-mapping shape as `AdminTeamsService`/`AdminLeaguesService`
  * (P2002 → `ConflictException`, P2025 → `NotFoundException`, P2003 →
@@ -33,16 +34,20 @@ export class AdminSeasonsService {
   constructor(private readonly prisma: PrismaService) {}
 
   findAll(): Promise<Season[]> {
-    return this.prisma.season.findMany({ orderBy: { startDate: 'desc' } });
+    return this.prisma.season.findMany({
+      include: { league: true },
+      orderBy: { startDate: 'desc' },
+    });
   }
 
   async findOne(id: number) {
     const season = await this.prisma.season.findUnique({
       where: { id },
       include: {
+        league: true,
         participations: {
-          include: { team: true, league: true },
-          orderBy: [{ leagueId: 'asc' }, { position: 'asc' }],
+          include: { team: true },
+          orderBy: { position: 'asc' },
         },
       },
     });
@@ -58,14 +63,16 @@ export class AdminSeasonsService {
       return await this.prisma.season.create({
         data: {
           externalId,
+          leagueId: dto.leagueId,
           startDate: new Date(dto.startDate),
           endDate: new Date(dto.endDate),
           currentMatchday: dto.currentMatchday,
           isCurrent: dto.isCurrent ?? false,
         },
+        include: { league: true },
       });
     } catch (error) {
-      throw this.mapError(error, 'Season not found');
+      throw this.mapError(error, 'League not found');
     }
   }
 
@@ -74,6 +81,7 @@ export class AdminSeasonsService {
       return await this.prisma.season.update({
         where: { id },
         data: {
+          leagueId: dto.leagueId,
           ...(dto.startDate !== undefined && {
             startDate: new Date(dto.startDate),
           }),
@@ -82,9 +90,10 @@ export class AdminSeasonsService {
           isCurrent: dto.isCurrent,
           externalId: dto.externalId,
         },
+        include: { league: true },
       });
     } catch (error) {
-      throw this.mapError(error, 'Season not found');
+      throw this.mapError(error, 'Season or league not found');
     }
   }
 
@@ -105,21 +114,18 @@ export class AdminSeasonsService {
         data: {
           seasonId,
           teamId: dto.teamId,
-          leagueId: dto.leagueId,
           position: dto.position,
           playedGames: dto.playedGames,
         },
-        include: { team: true, league: true },
+        include: { team: true },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
-          throw new ConflictException(
-            'This team is already in that league for this season',
-          );
+          throw new ConflictException('This team is already in this season');
         }
         if (error.code === 'P2003') {
-          throw new NotFoundException('Season, league, or team not found');
+          throw new NotFoundException('Season or team not found');
         }
       }
       throw error;
@@ -135,7 +141,7 @@ export class AdminSeasonsService {
       return await this.prisma.teamLeagueSeason.update({
         where: { id: participationId, seasonId },
         data: dto,
-        include: { team: true, league: true },
+        include: { team: true },
       });
     } catch (error) {
       throw this.mapError(error, 'Participation not found');

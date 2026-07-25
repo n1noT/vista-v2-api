@@ -50,18 +50,20 @@ model League {
   name        String
   logoUrl     String?
 
-  participations       TeamLeagueSeason[]
+  seasons     Season[]
   predictions Prediction[]
 }
 
 model Season {
   id              Int                @id @default(autoincrement())
   externalId      Int                @unique
+  leagueId        Int
   startDate       DateTime
   endDate         DateTime
   currentMatchday Int
   isCurrent       Boolean
 
+  league          League             @relation(fields: [leagueId], references: [id])
   participations           TeamLeagueSeason[]
   predictions     Prediction[]
 }
@@ -69,16 +71,14 @@ model Season {
 model TeamLeagueSeason {
   id               Int    @id @default(autoincrement())
   teamId           Int
-  leagueId         Int
   seasonId         Int
   position         Int
   playedGames      Int
 
   team   Team   @relation(fields: [teamId], references: [id])
-  league League @relation(fields: [leagueId], references: [id])
   season Season @relation(fields: [seasonId], references: [id])
 
-  @@unique([teamId, leagueId, seasonId])
+  @@unique([teamId, seasonId])
 }
 
 model Prediction {

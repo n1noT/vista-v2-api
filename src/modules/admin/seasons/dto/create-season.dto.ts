@@ -1,5 +1,9 @@
 /**
- * Validated body for `POST /admin/seasons`. `externalId` is optional — when
+ * Validated body for `POST /admin/seasons`. `leagueId` is required — every
+ * `Season` belongs to exactly one `League` (`Season.leagueId`), matching
+ * how football-data.org's own season ids are already scoped to one
+ * competition (see `FootballSyncService.syncLeague`); there is no such
+ * thing as a season shared across leagues. `externalId` is optional — when
  * omitted, `AdminSeasonsService.create` assigns a synthetic negative one
  * (football-data.org ids are always positive) so a manually-created season
  * can never collide with a row `FootballSyncService` upserts. Dates arrive
@@ -15,6 +19,10 @@ import {
 } from 'class-validator';
 
 export class CreateSeasonDto {
+  @IsInt()
+  @Min(1)
+  leagueId!: number;
+
   @IsDateString()
   startDate!: string;
 

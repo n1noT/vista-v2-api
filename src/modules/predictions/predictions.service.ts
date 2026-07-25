@@ -98,8 +98,8 @@ export class PredictionsService {
   ) {
     const teamCount = await this.prisma.teamLeagueSeason.count({
       where: {
-        leagueId: prediction.leagueId,
         seasonId: prediction.seasonId,
+        season: { leagueId: prediction.leagueId },
       },
     });
 
