@@ -3,10 +3,10 @@
  * (`AdminUsersModule`), the dashboard overview (`AdminDashboardModule`),
  * editing any player's standings prediction (`AdminPredictionsModule`),
  * team/championship/season management (`AdminTeamsModule`/
- * `AdminLeaguesModule`/`AdminSeasonsModule`), and forcing a football-data.org
- * sync on demand (`AdminSyncModule`). Future admin areas from
- * `Fonctionnalites_Admin.md` (odds, LDC results) get added here as their
- * own submodules rather than growing this file's own logic.
+ * `AdminLeaguesModule`/`AdminSeasonsModule`), forcing a football-data.org
+ * sync on demand (`AdminSyncModule`), editing bookmaker odds
+ * (`AdminOddsModule`), and manually triggering points calculation
+ * (`AdminResultsModule`) per `Fonctionnalites_Admin.md`.
  */
 import { Module } from '@nestjs/common';
 import { AdminUsersModule } from './users/admin-users.module';
@@ -16,6 +16,8 @@ import { AdminTeamsModule } from './teams/admin-teams.module';
 import { AdminLeaguesModule } from './leagues/admin-leagues.module';
 import { AdminSeasonsModule } from './seasons/admin-seasons.module';
 import { AdminSyncModule } from './sync/admin-sync.module';
+import { AdminOddsModule } from './odds/admin-odds.module';
+import { AdminResultsModule } from './results/admin-results.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { AdminSyncModule } from './sync/admin-sync.module';
     AdminLeaguesModule,
     AdminSeasonsModule,
     AdminSyncModule,
+    AdminOddsModule,
+    AdminResultsModule,
   ],
 })
 export class AdminModule {}

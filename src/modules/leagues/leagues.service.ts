@@ -94,7 +94,9 @@ export class LeaguesService {
    * same as `getAvailableLeagues` — not via a global `season.findFirst`.
    * Returns `null` (the controller turns that into a 404) if the league
    * doesn't exist or has no `TeamLeagueSeason` rows for its current season,
-   * e.g. before the daily sync has run.
+   * e.g. before the daily sync has run. Also passes through `expectedPosition`
+   * (already fetched by the query below, just not previously projected) so
+   * the front can render a potential-points preview per placement.
    */
   async getLeagueDetail(leagueId: number): Promise<LeagueDetail | null> {
     const league = await this.prisma.league.findUnique({
@@ -126,6 +128,7 @@ export class LeaguesService {
         name: participation.team.name,
         logoUrl: participation.team.logoUrl,
         position: participation.position,
+        expectedPosition: participation.expectedPosition,
       })),
     };
   }

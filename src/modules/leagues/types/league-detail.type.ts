@@ -6,16 +6,17 @@
  * `DraggableLeagueTable`'s initial order. `teams` is sorted by the team's
  * *real* current `position` (`TeamLeagueSeason.position`, kept fresh by
  * `FootballSyncService`) purely as a sane drag-and-drop starting point for
- * the player — it carries no other meaning here, and there is no bookmaker
- * "cote" per position yet (that needs the odds engine from
- * `vista-v2-docs/03_Architecture_technique/Calcul_Cotes.md`, not modeled in
- * the schema yet), so the front can't render that column until it exists.
+ * the player — it carries no other meaning here. `expectedPosition` ("F"
+ * from `Calcul_Cotes.md`, admin-edited via `/admin/odds`) is nullable —
+ * not every team has odds set — and lets the front render a potential-points
+ * preview per placement in `DraggableLeagueTable`.
  */
 export type LeagueTeamStanding = {
   teamId: number;
   name: string;
   logoUrl: string | null;
   position: number;
+  expectedPosition: number | null;
 };
 
 export type LeagueDetail = {

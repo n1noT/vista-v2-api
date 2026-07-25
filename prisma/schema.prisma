@@ -74,6 +74,9 @@ model TeamLeagueSeason {
   seasonId         Int
   position         Int
   playedGames      Int
+  // Bookmaker-expected position ("F" in Calcul_Cotes.md), admin-edited only. Float because
+  // tied bookmaker odds resolve to an averaged position (e.g. 3.5 for two teams tied for 3rd).
+  expectedPosition Float?
 
   team   Team   @relation(fields: [teamId], references: [id])
   season Season @relation(fields: [seasonId], references: [id])
@@ -82,17 +85,19 @@ model TeamLeagueSeason {
 }
 
 model Prediction {
-  id          Int               @id @default(autoincrement())
-  userId      String
-  leagueId    Int
-  seasonId    Int
-  status      PredictionState   @default(DRAFT)
-  submittedAt DateTime?
+  id                Int               @id @default(autoincrement())
+  userId            String
+  leagueId          Int
+  seasonId          Int
+  status            PredictionState   @default(DRAFT)
+  submittedAt       DateTime?
+  points            Int?
+  pointsCalculatedAt DateTime?
 
   user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   league      League            @relation(fields: [leagueId], references: [id])
   season      Season            @relation(fields: [seasonId], references: [id])
-  
+
   items       PredictionItem[]
 }
 
@@ -101,6 +106,7 @@ model PredictionItem {
   predictionId Int
   teamId       Int
   position     Int
+  points       Int?
 
   prediction   Prediction @relation(fields: [predictionId], references: [id], onDelete: Cascade)
   team         Team       @relation(fields: [teamId], references: [id])
