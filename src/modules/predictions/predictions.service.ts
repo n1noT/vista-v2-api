@@ -1,3 +1,20 @@
+/**
+ * All prediction read/write logic: the `/predictions` hub's league listing
+ * (`getAvailableLeagues`), the league-detail passthrough
+ * (`getLeagueDetail`), fetching a player's own grid (`findOwn`), and
+ * persisting one (`save`). Every method takes `userId` as a plain parameter
+ * rather than reading it off a request — `PredictionsController` passes
+ * `@CurrentUser().id` for the player-facing `/predictions/*` routes, while
+ * `AdminPredictionsController` (`modules/admin/predictions/`) passes an
+ * arbitrary player's id for `/admin/users/:userId/predictions/*`, reusing
+ * this exact service (see `PredictionsModule`'s `exports`) rather than
+ * duplicating the validation/transaction logic.
+ *
+ * `save`'s `options.bypassSubmittedLock` exists solely for that admin path:
+ * per `Fonctionnalites_Admin.md`, an admin can edit a player's prediction
+ * "même si la prédiction est soumise" (even once submitted), which the
+ * normal submitted-lock below would otherwise reject with a 400.
+ */
 import {
   Injectable,
   BadRequestException,
@@ -77,6 +94,7 @@ export class PredictionsService {
     userId: string,
     prediction: CUPredictionsDto,
     state: PredictionState,
+    options: { bypassSubmittedLock?: boolean } = {},
   ) {
     const teamCount = await this.prisma.teamLeagueSeason.count({
       where: {
@@ -124,7 +142,10 @@ export class PredictionsService {
         },
       });
 
-      if (existing?.status === PredictionState.SUBMITTED) {
+      if (
+        existing?.status === PredictionState.SUBMITTED &&
+        !options.bypassSubmittedLock
+      ) {
         throw new BadRequestException(
           'Ce pronostic a déjà été soumis et ne peut plus être modifié.',
         );

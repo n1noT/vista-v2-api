@@ -7,6 +7,9 @@
  * future admin `/admin/seasons`, may also need it), but its HTTP surface now
  * lives entirely under `/predictions/leagues*` here rather than its own
  * controller, since every consumer of that data is a player predicting.
+ * `PredictionsService` is exported so `AdminPredictionsModule` can reuse it
+ * for `/admin/users/:userId/predictions` (editing another player's grid)
+ * instead of duplicating this module's Prisma logic.
  */
 import { Module } from '@nestjs/common';
 import { PredictionsController } from './predictions.controller';
@@ -17,5 +20,6 @@ import { LeaguesModule } from '../leagues/leagues.module';
   imports: [LeaguesModule],
   controllers: [PredictionsController],
   providers: [PredictionsService],
+  exports: [PredictionsService],
 })
 export class PredictionsModule {}

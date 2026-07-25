@@ -12,6 +12,9 @@
  * applies the same rule specifically to `role` changes (an admin demoting
  * themselves mid-session would hit the same lockout via `RolesGuard` on the
  * very next request), while still allowing self-edits of pseudo/email.
+ * `findOne` (`GET /admin/users/:id`) exists mainly so the admin
+ * prediction-editing pages (`AdminPredictionsController`) can look up which
+ * player they're editing without piggybacking on `findAll`'s search.
  */
 import {
   Body,
@@ -21,6 +24,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -45,6 +49,15 @@ export class AdminUsersController {
   async findAll(@Query('search') search?: string) {
     const users = await this.usersService.findAll(search);
     return users.map((user) => this.usersService.toPublicUser(user));
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const user = await this.usersService.findById(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return this.usersService.toPublicUser(user);
   }
 
   @Patch(':id')
