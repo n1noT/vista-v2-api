@@ -16,14 +16,24 @@
  * One league fetch failing (network error, unknown code, etc.) is logged
  * *and* recorded in `syncAll`'s returned `SyncResult` rather than aborting
  * the whole run — the other leagues should still sync.
+ *
+ * After each league's standings sync, `recalculatePoints` reuses
+ * `AdminResultsService.calculate()` (the same logic behind the admin's
+ * manual "recalculate points" button) so `Prediction.points` stays current
+ * with real-world results without waiting for an admin to trigger it by
+ * hand. A season missing `expectedPosition` odds for some team (thrown by
+ * `calculate` as a `BadRequestException`) is treated as "nothing to score
+ * yet", not a sync failure — most seasons won't have odds set until closer
+ * to kickoff.
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FootballDataClient } from './football-data.client';
 import { SYNCED_COMPETITION_CODES } from './constants';
 import { FootballDataStandingsResponse } from './types/football-data.types';
 import { SyncResult } from './types/sync-result.type';
+import { AdminResultsService } from '../admin/results/admin-results.service';
 
 @Injectable()
 export class FootballSyncService {
@@ -32,6 +42,7 @@ export class FootballSyncService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly client: FootballDataClient,
+    private readonly adminResultsService: AdminResultsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
@@ -52,11 +63,16 @@ export class FootballSyncService {
     for (const code of SYNCED_COMPETITION_CODES) {
       try {
         const standings = await this.client.getStandings(code);
-        await this.syncLeague(standings);
+        const { leagueId, seasonId } = await this.syncLeague(standings);
         this.logger.log(`Synced ${code} (${standings.competition.name}).`);
+        const pointsCalculated = await this.recalculatePoints(
+          leagueId,
+          seasonId,
+        );
         result.synced.push({
           code,
           competitionName: standings.competition.name,
+          pointsCalculated,
         });
       } catch (error) {
         const message = (error as Error).message;
@@ -68,10 +84,40 @@ export class FootballSyncService {
     return result;
   }
 
-  private async syncLeague(data: FootballDataStandingsResponse): Promise<void> {
+  /**
+   * Wraps `AdminResultsService.calculate` so a season with no odds set yet
+   * (or no teams) skips scoring instead of failing the sync that just ran.
+   */
+  private async recalculatePoints(
+    leagueId: number,
+    seasonId: number,
+  ): Promise<number | null> {
+    try {
+      const { predictionsScored } = await this.adminResultsService.calculate(
+        leagueId,
+        seasonId,
+      );
+      return predictionsScored;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        this.logger.warn(
+          `Skipped points calculation for league ${leagueId}/season ${seasonId}: ${(error as Error).message}`,
+        );
+        return null;
+      }
+      this.logger.error(
+        `Points calculation failed for league ${leagueId}/season ${seasonId}: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
+  private async syncLeague(
+    data: FootballDataStandingsResponse,
+  ): Promise<{ leagueId: number; seasonId: number }> {
     const table = data.standings.find((s) => s.type === 'TOTAL')?.table ?? [];
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const league = await tx.league.upsert({
         where: { externalId: data.competition.id },
         update: {
@@ -131,6 +177,8 @@ export class FootballSyncService {
           },
         });
       }
+
+      return { leagueId: league.id, seasonId: season.id };
     });
   }
 }

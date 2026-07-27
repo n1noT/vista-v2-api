@@ -7,9 +7,10 @@
  *   rather than a confusing runtime error later).
  * - `PrismaModule` is `@Global()` so `PrismaService` is injectable anywhere
  *   without re-importing it in every feature module.
- * - `UsersModule`, `AuthModule`, `PredictionsModule`, `FootballSyncModule`,
- *   and `AdminModule` are the domain modules; `AuthModule` depends on
- *   `UsersModule`, never the other way round. `LeaguesModule` isn't listed
+ * - `UsersModule`, `AuthModule`, `PredictionsModule`, `LeaderboardModule`,
+ *   `FootballSyncModule`, and `AdminModule` are the domain modules;
+ *   `AuthModule` depends on `UsersModule`, never the other way round.
+ *   `LeaguesModule` isn't listed
  *   here — it has no controller of its own anymore (its HTTP surface moved
  *   to `PredictionsController`), so it's only imported where its service is
  *   actually needed, inside `PredictionsModule`. `AdminModule` also reuses
@@ -34,6 +35,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PredictionsModule } from './modules/predictions/predictions.module';
+import { LeaderboardModule } from './modules/leaderboard/leaderboard.module';
 import { FootballSyncModule } from './modules/football-sync/football-sync.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -50,6 +52,7 @@ import { envValidationSchema } from './config/env.validation';
     UsersModule,
     AuthModule,
     PredictionsModule,
+    LeaderboardModule,
     FootballSyncModule,
     AdminModule,
   ],

@@ -14,6 +14,10 @@
  * per `Fonctionnalites_Admin.md`, an admin can edit a player's prediction
  * "même si la prédiction est soumise" (even once submitted), which the
  * normal submitted-lock below would otherwise reject with a 400.
+ *
+ * `getPublicPredictions` backs `GET /predictions/users/:userId`, the
+ * `/profile/:id` sub-view — see its own header comment and
+ * `PublicLeaguePrediction` for the visibility rule.
  */
 import {
   Injectable,
@@ -26,6 +30,7 @@ import { CUPredictionsDto } from './dto/cu-prediction.dto';
 import { LeaguesService } from '../leagues/leagues.service';
 import { LeagueDetail } from '../leagues/types/league-detail.type';
 import { LeagueWithPredictionStatus } from './types/league-with-prediction-status.type';
+import { PublicLeaguePrediction } from './types/public-league-prediction.type';
 
 @Injectable()
 export class PredictionsService {
@@ -87,6 +92,75 @@ export class PredictionsService {
     return this.prisma.prediction.findFirst({
       where: { userId, leagueId, seasonId },
       include: { items: true },
+    });
+  }
+
+  /**
+   * Backs `GET /predictions/users/:userId` — one entry per current league,
+   * with `targetUserId`'s grid attached only when *both* sides have
+   * `SUBMITTED` (not merely drafted) their own prediction for that league.
+   * A single `Promise.all` fetches both users' predictions instead of one
+   * round-trip per league, same batching approach as `getAvailableLeagues`.
+   */
+  async getPublicPredictions(
+    viewerId: string,
+    targetUserId: string,
+  ): Promise<PublicLeaguePrediction[]> {
+    const leagues = await this.leaguesService.getAvailableLeagues();
+    if (leagues.length === 0) {
+      return [];
+    }
+
+    const leagueIds = leagues.map((l) => l.leagueId);
+    const [targetPredictions, viewerPredictions] = await Promise.all([
+      this.prisma.prediction.findMany({
+        where: { userId: targetUserId, leagueId: { in: leagueIds } },
+        include: { items: { include: { team: true } } },
+      }),
+      this.prisma.prediction.findMany({
+        where: { userId: viewerId, leagueId: { in: leagueIds } },
+      }),
+    ]);
+
+    const targetByLeague = new Map(
+      targetPredictions.map((prediction) => [prediction.leagueId, prediction]),
+    );
+    const viewerStatusByLeague = new Map(
+      viewerPredictions.map((prediction) => [
+        prediction.leagueId,
+        prediction.status,
+      ]),
+    );
+
+    return leagues.map((league) => {
+      const targetPrediction = targetByLeague.get(league.leagueId) ?? null;
+      const targetSubmitted =
+        targetPrediction?.status === PredictionState.SUBMITTED;
+      const viewerSubmitted =
+        viewerStatusByLeague.get(league.leagueId) === PredictionState.SUBMITTED;
+      const visible = targetSubmitted && viewerSubmitted;
+
+      return {
+        leagueId: league.leagueId,
+        leagueName: league.leagueName,
+        leagueLogoUrl: league.leagueLogoUrl,
+        seasonId: league.seasonId,
+        targetSubmitted,
+        viewerSubmitted,
+        visible,
+        totalPoints: visible ? (targetPrediction?.points ?? null) : null,
+        items: visible
+          ? [...targetPrediction.items]
+              .sort((a, b) => a.position - b.position)
+              .map((item) => ({
+                teamId: item.teamId,
+                name: item.team.name,
+                logoUrl: item.team.logoUrl,
+                position: item.position,
+                points: item.points,
+              }))
+          : null,
+      };
     });
   }
 

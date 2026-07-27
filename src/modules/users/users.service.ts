@@ -13,6 +13,9 @@
  *   catch P2025 (record not found) and rethrow as `NotFoundException`.
  * - `toPublicUser` strips `passwordHash` before a user is ever returned from
  *   a controller — see `AuthenticatedUser` in `common/types/`.
+ * - `toPublicProfile` strips further (also `email`/`bannedAt`/`role`/
+ *   `updatedAt`) for `GET /users/:id`, the read-only view one player gets of
+ *   another's profile (`/profile/:id`) — see `PublicProfile`.
  */
 import {
   ConflictException,
@@ -22,6 +25,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Role, User } from '../../../generated/prisma/client';
 import { AuthenticatedUser } from '../../common/types/authenticated-user.type';
+import { PublicProfile } from './types/public-profile.type';
 
 export interface CreateUserInput {
   email: string;
@@ -82,6 +86,15 @@ export class UsersService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...publicUser } = user;
     return publicUser;
+  }
+
+  toPublicProfile(user: User): PublicProfile {
+    return {
+      id: user.id,
+      pseudo: user.pseudo,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt.toISOString(),
+    };
   }
 
   findAll(search?: string): Promise<User[]> {

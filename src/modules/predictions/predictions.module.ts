@@ -9,15 +9,19 @@
  * controller, since every consumer of that data is a player predicting.
  * `PredictionsService` is exported so `AdminPredictionsModule` can reuse it
  * for `/admin/users/:userId/predictions` (editing another player's grid)
- * instead of duplicating this module's Prisma logic.
+ * instead of duplicating this module's Prisma logic. Also imports
+ * `UsersModule` — `PredictionsController` needs `UsersService.findById` to
+ * 404 `GET /predictions/users/:userId` up front when `:userId` doesn't name
+ * a real user, same pattern as `AdminPredictionsController`.
  */
 import { Module } from '@nestjs/common';
 import { PredictionsController } from './predictions.controller';
 import { PredictionsService } from './predictions.service';
 import { LeaguesModule } from '../leagues/leagues.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [LeaguesModule],
+  imports: [LeaguesModule, UsersModule],
   controllers: [PredictionsController],
   providers: [PredictionsService],
   exports: [PredictionsService],
