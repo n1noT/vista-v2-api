@@ -117,68 +117,71 @@ export class FootballSyncService {
   ): Promise<{ leagueId: number; seasonId: number }> {
     const table = data.standings.find((s) => s.type === 'TOTAL')?.table ?? [];
 
-    return this.prisma.$transaction(async (tx) => {
-      const league = await tx.league.upsert({
-        where: { externalId: data.competition.id },
-        update: {
-          name: data.competition.name,
-          logoUrl: data.competition.emblem,
-        },
-        create: {
-          externalId: data.competition.id,
-          name: data.competition.name,
-          logoUrl: data.competition.emblem,
-        },
-      });
-
-      const season = await tx.season.upsert({
-        where: { externalId: data.season.id },
-        update: {
-          leagueId: league.id,
-          startDate: new Date(data.season.startDate),
-          endDate: new Date(data.season.endDate),
-          currentMatchday: data.season.currentMatchday,
-          isCurrent: true,
-        },
-        create: {
-          externalId: data.season.id,
-          leagueId: league.id,
-          startDate: new Date(data.season.startDate),
-          endDate: new Date(data.season.endDate),
-          currentMatchday: data.season.currentMatchday,
-          isCurrent: true,
-        },
-      });
-
-      for (const row of table) {
-        const team = await tx.team.upsert({
-          where: { externalId: row.team.id },
-          update: { name: row.team.name, logoUrl: row.team.crest },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const league = await tx.league.upsert({
+          where: { externalId: data.competition.id },
+          update: {
+            name: data.competition.name,
+            logoUrl: data.competition.emblem,
+          },
           create: {
-            externalId: row.team.id,
-            name: row.team.name,
-            logoUrl: row.team.crest,
+            externalId: data.competition.id,
+            name: data.competition.name,
+            logoUrl: data.competition.emblem,
           },
         });
 
-        await tx.teamLeagueSeason.upsert({
-          where: {
-            teamId_seasonId: {
+        const season = await tx.season.upsert({
+          where: { externalId: data.season.id },
+          update: {
+            leagueId: league.id,
+            startDate: new Date(data.season.startDate),
+            endDate: new Date(data.season.endDate),
+            currentMatchday: data.season.currentMatchday,
+            isCurrent: true,
+          },
+          create: {
+            externalId: data.season.id,
+            leagueId: league.id,
+            startDate: new Date(data.season.startDate),
+            endDate: new Date(data.season.endDate),
+            currentMatchday: data.season.currentMatchday,
+            isCurrent: true,
+          },
+        });
+
+        for (const row of table) {
+          const team = await tx.team.upsert({
+            where: { externalId: row.team.id },
+            update: { name: row.team.name, logoUrl: row.team.crest },
+            create: {
+              externalId: row.team.id,
+              name: row.team.name,
+              logoUrl: row.team.crest,
+            },
+          });
+
+          await tx.teamLeagueSeason.upsert({
+            where: {
+              teamId_seasonId: {
+                teamId: team.id,
+                seasonId: season.id,
+              },
+            },
+            update: { position: row.position, playedGames: row.playedGames },
+            create: {
               teamId: team.id,
               seasonId: season.id,
+              position: row.position,
+              playedGames: row.playedGames,
             },
-          },
-          update: { position: row.position, playedGames: row.playedGames },
-          create: {
-            teamId: team.id,
-            seasonId: season.id,
-            position: row.position,
-            playedGames: row.playedGames,
-          },
-        });
-      }
+          });
+        }
 
-      return { leagueId: league.id, seasonId: season.id };
-    });
+        return { leagueId: league.id, seasonId: season.id };
+      },
+      { timeout: 30000 }
+    );
   }
 }
