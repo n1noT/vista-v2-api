@@ -11,7 +11,7 @@
  * disconnects in `onModuleDestroy` so the pool's lifecycle matches Nest's.
  */
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '../../generated/prisma/client';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class PrismaService
 {
   constructor() {
     super({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+      adapter: new PrismaNeon({ connectionString: process.env.DATABASE_URL! }),
     });
   }
 
