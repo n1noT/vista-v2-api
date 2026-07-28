@@ -1,27 +1,22 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine
+
 WORKDIR /app
 
-FROM base AS dev
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-EXPOSE 3000
-CMD ["npm", "run", "start:dev"]
+ARG DIRECT_URL
+ENV DIRECT_URL=$DIRECT_URL
 
-FROM base AS build
-COPY package*.json ./
-RUN npm ci
 COPY . .
+
+RUN npm ci
+
 RUN npx prisma generate
+
 RUN npm run build
 
-FROM base AS production
+RUN npm prune --omit=dev
+
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/generated ./generated
-COPY prisma ./prisma
+
 EXPOSE 3000
-CMD ["node", "dist/main"]
+
+CMD ["node", "dist/src/main"]
