@@ -100,10 +100,8 @@ export class AuthService {
     const expiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '7d');
     return {
       httpOnly: true,
-      // Front (:4200) and API (:3000) are separate origins, so the cookie must be
-      // SameSite=None+Secure; browsers treat localhost as secure even over http.
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       path: '/',
       maxAge: parseDurationMs(expiresIn),
     };
